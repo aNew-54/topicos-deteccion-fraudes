@@ -6,4 +6,4 @@
  - Herrera Arias, Sarah Daniela Fernanda
  - Infante Chacón, Alexander
  - Ocas Ruiz, Arnold Michell.
- - Vilca Ocas, Maria Belén
+ - Vilca Ocas, Maria Belén.
