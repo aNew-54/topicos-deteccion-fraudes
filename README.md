@@ -5,5 +5,5 @@
  - Alfaro Urtecho, Brayam Esmith
  - Herrera Arias, Sarah Daniela Fernanda
  - Infante Chacón, Alexander
- - Ocas Ruiz, Arnold Michell
+ - Ocas Ruiz, Arnold Michell.
  - Vilca Ocas, Maria Belén
