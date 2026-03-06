@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SeguroIA — Detección de Fraudes</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg:       #080c10;
+            --surface:  #0d1318;
+            --border:   #1c2a35;
+            --accent:   #00d4ff;
+            --danger:   #ff3b5c;
+            --safe:     #00e5a0;
+            --warn:     #ffaa00;
+            --text:     #c8dae6;
+            --muted:    #4a6175;
+            --mono:     'Space Mono', monospace;
+            --sans:     'Syne', sans-serif;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { background:var(--bg); color:var(--text); font-family:var(--sans); min-height:100vh; overflow-x:hidden; }
+        body::before {
+            content:''; position:fixed; inset:0;
+            background-image: linear-gradient(rgba(0,212,255,.03) 1px,transparent 1px), linear-gradient(90deg,rgba(0,212,255,.03) 1px,transparent 1px);
+            background-size:40px 40px; pointer-events:none; z-index:0;
+        }
+        nav {
+            position:sticky; top:0; z-index:100;
+            display:flex; align-items:center; justify-content:space-between;
+            padding:0 2rem; height:58px;
+            background:rgba(8,12,16,.92); border-bottom:1px solid var(--border); backdrop-filter:blur(12px);
+        }
+        .nav-brand { display:flex; align-items:center; gap:10px; font-family:var(--sans); font-weight:800; font-size:1.1rem; letter-spacing:-.02em; color:#fff; }
+        .nav-brand .dot { width:8px; height:8px; background:var(--accent); border-radius:50%; animation:pulse 2s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+        .nav-link { font-family:var(--mono); font-size:.75rem; color:var(--muted); text-decoration:none; border:1px solid var(--border); padding:6px 14px; border-radius:3px; transition:all .2s; letter-spacing:.05em; }
+        .nav-link:hover { color:var(--accent); border-color:var(--accent); background:rgba(0,212,255,.05); }
+
+        .container { position:relative; z-index:1; max-width:1000px; margin:0 auto; padding:2.5rem 1.5rem; }
+
+        .hero { text-align:center; margin-bottom:3rem; }
+        .hero-tag { display:inline-block; font-family:var(--mono); font-size:.7rem; letter-spacing:.15em; color:var(--accent); background:rgba(0,212,255,.08); border:1px solid rgba(0,212,255,.2); padding:4px 14px; border-radius:2px; margin-bottom:1rem; text-transform:uppercase; }
+        .hero h1 { font-size:clamp(1.8rem,4vw,2.8rem); font-weight:800; letter-spacing:-.03em; color:#fff; line-height:1.1; }
+        .hero h1 span { color:var(--accent); }
+        .hero p { margin-top:.75rem; font-family:var(--mono); font-size:.78rem; color:var(--muted); letter-spacing:.05em; }
+
+        .card { background:var(--surface); border:1px solid var(--border); border-radius:6px; overflow:hidden; margin-bottom:1.2rem; }
+        .card-header { display:flex; align-items:center; gap:10px; padding:.9rem 1.5rem; border-bottom:1px solid var(--border); background:rgba(0,212,255,.03); }
+        .section-num { font-family:var(--mono); font-size:.65rem; color:var(--accent); background:rgba(0,212,255,.1); border:1px solid rgba(0,212,255,.3); padding:2px 8px; border-radius:2px; }
+        .card-header h3 { font-size:.85rem; font-weight:600; letter-spacing:.05em; text-transform:uppercase; }
+        .card-body { padding:1.4rem 1.5rem; }
+
+        .form-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:1rem; }
+
+        .form-group { display:flex; flex-direction:column; gap:5px; }
+        .label-row { display:flex; align-items:center; gap:6px; }
+        label { font-family:var(--mono); font-size:.68rem; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; }
+
+        /* Tooltip */
+        .tip {
+            display:inline-flex; align-items:center; justify-content:center;
+            width:15px; height:15px; border-radius:50%;
+            background:rgba(0,212,255,.1); border:1px solid rgba(0,212,255,.25);
+            font-family:var(--mono); font-size:.58rem; color:var(--accent);
+            cursor:help; position:relative; flex-shrink:0;
+        }
+        .tip::after {
+            content:attr(data-tip);
+            position:absolute; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%);
+            background:#1a2a36; border:1px solid var(--border);
+            color:var(--text); font-family:var(--mono); font-size:.68rem;
+            padding:8px 12px; border-radius:4px; white-space:normal; width:230px; line-height:1.5;
+            z-index:50; pointer-events:none; opacity:0; transition:opacity .2s;
+        }
+        .tip:hover::after { opacity:1; }
+
+        input, select {
+            background:var(--bg); border:1px solid var(--border);
+            color:var(--text); font-family:var(--mono); font-size:.82rem;
+            padding:9px 12px; border-radius:4px; outline:none;
+            transition:border-color .2s,box-shadow .2s; width:100%; -webkit-appearance:none;
+        }
+        input[type="date"] { color-scheme:dark; }
+        input:focus, select:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,212,255,.08); }
+        select option { background:#0d1318; }
+
+        /* Calculated field */
+        .calc-group { position:relative; }
+        .calc-badge {
+            position:absolute; right:10px; top:50%; transform:translateY(-50%);
+            font-family:var(--mono); font-size:.6rem;
+            background:rgba(0,212,255,.1); border:1px solid rgba(0,212,255,.25);
+            color:var(--accent); padding:2px 7px; border-radius:2px; pointer-events:none;
+        }
+        .computed-preview { display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.6rem; }
+        .computed-chip { font-family:var(--mono); font-size:.65rem; background:rgba(0,212,255,.06); border:1px solid rgba(0,212,255,.15); color:var(--muted); padding:3px 9px; border-radius:2px; }
+        .computed-chip span { color:var(--accent); font-weight:700; }
+
+        /* Star rating */
+        .stars-row { display:flex; gap:6px; }
+        .star-btn { flex:1; background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:9px 4px; cursor:pointer; transition:all .15s; text-align:center; font-family:var(--mono); font-size:.72rem; color:var(--muted); }
+        .star-btn:hover, .star-btn.active { background:rgba(0,212,255,.08); border-color:var(--accent); color:var(--accent); }
+        input[name="calificacion_conductor"] { display:none; }
+
+        /* Submit */
+        .btn-analyze {
+            width:100%; padding:16px;
+            background:linear-gradient(135deg,#0095b3,#00d4ff 60%,#00ffcc);
+            border:none; border-radius:4px; color:#001a22; font-family:var(--sans); font-size:.95rem; font-weight:800;
+            letter-spacing:.05em; text-transform:uppercase; cursor:pointer;
+            position:relative; overflow:hidden; transition:transform .15s,box-shadow .15s;
+        }
+        .btn-analyze::after { content:''; position:absolute; inset:0; background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,.25),transparent 70%); transform:translateX(-100%); transition:transform .5s; }
+        .btn-analyze:hover { transform:translateY(-1px); box-shadow:0 8px 30px rgba(0,212,255,.25); }
+        .btn-analyze:hover::after { transform:translateX(100%); }
+        .btn-analyze:active { transform:translateY(0); }
+
+        /* Result */
+        .result-panel { border-radius:6px; overflow:hidden; animation:slideUp .4s ease; margin-bottom:1.5rem; }
+        @keyframes slideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+        .result-panel.fraud { border:1px solid rgba(255,59,92,.4); background:rgba(255,59,92,.05); }
+        .result-panel.safe  { border:1px solid rgba(0,229,160,.4); background:rgba(0,229,160,.05); }
+        .result-header { display:flex; align-items:center; justify-content:space-between; padding:1.5rem 2rem; flex-wrap:wrap; gap:1rem; }
+        .result-verdict { display:flex; align-items:center; gap:1rem; }
+        .verdict-icon { width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.5rem; flex-shrink:0; }
+        .fraud .verdict-icon { background:rgba(255,59,92,.15); border:2px solid var(--danger); animation:alertPulse 1.5s infinite; }
+        .safe  .verdict-icon { background:rgba(0,229,160,.1);  border:2px solid var(--safe); }
+        @keyframes alertPulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,59,92,.4)} 50%{box-shadow:0 0 0 10px rgba(255,59,92,0)} }
+        .verdict-label { font-size:1.6rem; font-weight:800; letter-spacing:-.02em; }
+        .fraud .verdict-label { color:var(--danger); }
+        .safe  .verdict-label { color:var(--safe); }
+        .verdict-sub { font-family:var(--mono); font-size:.72rem; color:var(--muted); margin-top:3px; }
+        .prob-block { text-align:right; }
+        .prob-value { font-family:var(--mono); font-size:2.2rem; font-weight:700; line-height:1; }
+        .fraud .prob-value { color:var(--danger); }
+        .safe  .prob-value { color:var(--safe); }
+        .prob-label { font-family:var(--mono); font-size:.65rem; color:var(--muted); letter-spacing:.1em; text-transform:uppercase; }
+        .prob-bar-wrap { width:180px; height:4px; background:var(--border); border-radius:2px; margin-top:8px; overflow:hidden; }
+        .prob-bar { height:100%; border-radius:2px; transition:width 1s cubic-bezier(.25,.8,.25,1); }
+        .fraud .prob-bar { background:linear-gradient(90deg,#ff3b5c,#ff8c00); }
+        .safe  .prob-bar { background:linear-gradient(90deg,#00d4ff,#00e5a0); }
+        .signals-section { padding:1rem 2rem 1.5rem; border-top:1px solid rgba(255,255,255,.05); display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; }
+        .signals-title { font-family:var(--mono); font-size:.65rem; color:var(--muted); letter-spacing:.1em; text-transform:uppercase; width:100%; }
+        .signal-badge { font-family:var(--mono); font-size:.7rem; padding:4px 10px; border-radius:3px; display:flex; align-items:center; gap:6px; }
+        .signal-badge.active   { background:rgba(255,170,0,.12); border:1px solid rgba(255,170,0,.35); color:var(--warn); }
+        .signal-badge.inactive { background:rgba(74,97,117,.12); border:1px solid rgba(74,97,117,.25); color:var(--muted); text-decoration:line-through; opacity:.5; }
+        .alert-level { display:inline-flex; align-items:center; gap:6px; font-family:var(--mono); font-size:.72rem; padding:5px 14px; border-radius:3px; text-transform:uppercase; letter-spacing:.08em; font-weight:700; }
+        .level-BAJO    { background:rgba(0,229,160,.1);  border:1px solid rgba(0,229,160,.3);  color:var(--safe); }
+        .level-MEDIO   { background:rgba(0,212,255,.1);  border:1px solid rgba(0,212,255,.3);  color:var(--accent); }
+        .level-ALTO    { background:rgba(255,170,0,.1);  border:1px solid rgba(255,170,0,.3);  color:var(--warn); }
+        .level-CRÍTICO { background:rgba(255,59,92,.1);  border:1px solid rgba(255,59,92,.3);  color:var(--danger); animation:alertPulse 1.5s infinite; }
+
+        .flash { font-family:var(--mono); font-size:.78rem; padding:12px 16px; border-radius:4px; margin-bottom:1rem; }
+        .flash-danger  { background:rgba(255,59,92,.1);  border:1px solid rgba(255,59,92,.3);  color:var(--danger); }
+        .flash-success { background:rgba(0,229,160,.1);  border:1px solid rgba(0,229,160,.3);  color:var(--safe); }
+
+        .loading-overlay { display:none; position:fixed; inset:0; background:rgba(8,12,16,.85); z-index:999; align-items:center; justify-content:center; flex-direction:column; gap:1.5rem; backdrop-filter:blur(4px); }
+        .loading-overlay.active { display:flex; }
+        .scanner { width:80px; height:80px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite; }
+        @keyframes spin { to{transform:rotate(360deg)} }
+        .loading-text { font-family:var(--mono); font-size:.75rem; color:var(--accent); letter-spacing:.15em; animation:blink 1s step-end infinite; }
+        @keyframes blink { 50%{opacity:.3} }
+
+        @media(max-width:600px) { .form-grid{grid-template-columns:1fr 1fr} .result-header{flex-direction:column} .prob-block{text-align:left} .prob-bar-wrap{width:100%} }
+    </style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="scanner"></div>
+    <div class="loading-text">ANALIZANDO CON IA...</div>
+</div>
+
+<nav>
+    <div class="nav-brand">
+        <span class="dot"></span>
+        SEGURÓ<span style="color:var(--accent)">IA</span>
+        <span style="font-family:var(--mono);font-size:.65rem;color:var(--muted);margin-left:4px">v2.0</span>
+    </div>
+    <a class="nav-link" href="/admin">⚙ MLOPS ADMIN</a>
+</nav>
+
+<div class="container">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}{% for cat, msg in messages %}
+        <div class="flash flash-{{ cat }}">{{ msg }}</div>
+      {% endfor %}{% endif %}
+    {% endwith %}
+
+    <div class="hero">
+        <div class="hero-tag">Motor de Inteligencia Artificial · Modelo v2</div>
+        <h1>Detección de <span>Fraude</span><br>en Siniestros</h1>
+        <p>// Ensemble GradientBoosting + RandomForest · AUC-ROC optimizado · Umbral calibrado</p>
+    </div>
+
+    {% if resultado %}
+    <div class="result-panel {{ 'fraud' if resultado.es_fraude else 'safe' }}" id="resultPanel">
+        <div class="result-header">
+            <div class="result-verdict">
+                <div class="verdict-icon">{{ '⚠' if resultado.es_fraude else '✓' }}</div>
+                <div>
+                    <div class="verdict-label">{{ resultado.etiqueta }}</div>
+                    <div class="verdict-sub">NIVEL:&nbsp;
+                        <span class="alert-level level-{{ resultado.nivel_alerta }}">● {{ resultado.nivel_alerta }}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="prob-block">
+                <div class="prob-value">{{ resultado.probabilidad_pct }}%</div>
+                <div class="prob-label">PROB. DE FRAUDE</div>
+                <div class="prob-bar-wrap">
+                    <div class="prob-bar" style="width:{{ resultado.probabilidad_pct }}%"></div>
+                </div>
+            </div>
+        </div>
+        <div class="signals-section">
+            <div class="signals-title">// Señales de riesgo detectadas</div>
+            {% for nombre, activa in resultado.señales.items() %}
+            <span class="signal-badge {{ 'active' if activa else 'inactive' }}">
+                {{ '▲' if activa else '○' }} {{ nombre }}
+            </span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <form action="/predecir" method="POST" id="fraudForm">
+
+        <!-- ══ 01: Conductor y Póliza ══ -->
+        <div class="card">
+            <div class="card-header"><span class="section-num">01</span><h3>Conductor y Póliza</h3></div>
+            <div class="card-body">
+                <div class="form-grid">
+
+                    <div class="form-group">
+                        <div class="label-row"><label>Edad del asegurado</label></div>
+                        <input type="number" name="edad" min="16" max="100" value="{{ form_data.edad if form_data else 35 }}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="label-row"><label>Género</label></div>
+                        <select name="genero_ml">
+                            <option value="0" {{ 'selected' if form_data and form_data.genero_ml==0 }}>Masculino</option>
+                            <option value="1" {{ 'selected' if form_data and form_data.genero_ml==1 }}>Femenino</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="grid-column:span 2">
+                        <div class="label-row">
+                            <label>Calificación del conductor</label>
+                            <span class="tip" data-tip="Historial de manejo. 1 = muchas infracciones o accidentes previos. 4 = historial completamente limpio sin incidentes.">?</span>
+                        </div>
+                        <input type="hidden" name="calificacion_conductor" id="calInput" value="{{ form_data.calificacion_conductor if form_data else 2 }}">
+                        <div class="stars-row" id="calStars">
+                            <button type="button" class="star-btn" data-val="1">1 — Malo</button>
+                            <button type="button" class="star-btn" data-val="2">2 — Regular</button>
+                            <button type="button" class="star-btn" data-val="3">3 — Bueno</button>
+                            <button type="button" class="star-btn" data-val="4">4 — Excelente</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="label-row">
+                            <label>Edad del titular</label>
+                            <span class="tip" data-tip="Rango de edad de quien figura como titular del contrato. Puede diferir del conductor habitual del vehículo.">?</span>
+                        </div>
+                        <select name="edad_titular">
+                            {% for opt in ['16 to 17','18 to 20','21 to 25','26 to 30','31 to 35','36 to 40','41 to 50','51 to 65','over 65'] %}
+                            <option value="{{ opt }}" {{ 'selected' if form_data and form_data.edad_titular==opt }}>{{ opt }} años</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="label-row"><label>Tipo de cobertura</label></div>
+                        <select name="cobertura">
+                            {% for opt in ['Colisión','Todos los Riesgos','Responsabilidad Civil'] %}
+                            <option value="{{ opt }}" {{ 'selected' if form_data and form_data.cobertura==opt }}>{{ opt }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="label-row">
+                            <label>Deducible ($)</label>
+                            <span class="tip" data-tip="Lo que paga el cliente antes de que el seguro cubra el resto. Ej: siniestro de $5,000 con deducible de $400 → cliente paga $400, seguro cubre $4,600.">?</span>
+                        </div>
+                        <input type="number" name="deducible" value="{{ form_data.deducible if form_data else 400 }}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="label-row">
+                            <label>Tipo de agente</label>
+                            <span class="tip" data-tip="EXTERNO = corredor independiente que vende pólizas de varias aseguradoras. INTERNO = empleado directo de la empresa. Los agentes externos presentan mayor riesgo estadístico de fraude.">?</span>
+                        </div>
+                        <select name="tipo_agente">
+                            <option value="External" {{ 'selected' if form_data and form_data.tipo_agente=='External' }}>Externo (corredor)</option>
+                            <option value="Internal" {{ 'selected' if form_data and form_data.tipo_agente=='Internal' }}>Interno (empleado)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="label-row">
+                            <label>N.° de suplementos</label>
+                            <span class="tip" data-tip="Cuántas veces se modificó el contrato original después de firmado (ampliaciones, cambios de cobertura, etc.). Más modificaciones = mayor exposición al riesgo.">?</span>
+                        </div>
+                        <select name="numero_suplementos">
+                            {% for opt, lbl in [('none','Ninguno'),('1 to 2','1 a 2'),('3 to 5','3 a 5'),('more than 5','Más de 5')] %}
+                            <option value="{{ opt }}" {{ 'selected' if form_data and form_data.numero_suplementos==opt }}>{{ lbl }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ 02: Vehículo ══ -->
+        <div class="card">
+            <div class="card-header"><span class="section-num">02</span><h3>Vehículo</h3></div>
+            <div class="card-body">
+                <div class="form-grid">
+
+                    <div class="form-group">
+                        <div class="label-row"><label>Categoría</label></div>
+                        <select name="categoria_vehiculo">
+                            {% for opt in ['Sedan','Utility','Sport'] %}
+                            <option value="{{ opt }}" {{ 'selected' if form_data and form_data.categoria_vehiculo==opt }}>{{ opt }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="label-row"><label>Valor estimado ($)</label></div>
+                        <div class="calc-group">
+                            <input type="number" name="valor_estimado_vehiculo" id="valorVehiculo"
+                                   value="{{ form_data.valor_estimado_vehiculo if form_data else 25000 }}"
+                                   oninput="updateRangoBadge(this.value)" required>
+                            <span class="calc-badge" id="rangoBadge"></span>
+                        </div>
+                        <div class="computed-preview">
+                            <div class="computed-chip">Rango: <span id="rangoTexto">—</span></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="label-row"><label>Antigüedad</label></div>
+                        <select name="antiguedad_vehiculo">
+                            {% for opt, lbl in [('new','Nuevo'),('2 years','2 años'),('3 years','3 años'),('4 years','4 años'),('5 years','5 años'),('6 years','6 años'),('7 years','7 años'),('more than 7','Más de 7 años')] %}
+                            <option value="{{ opt }}" {{ 'selected' if form_data and form_data.antiguedad_vehiculo==opt }}>{{ lbl }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ 03: Siniestro ══ -->
+        <div class="card">
+            <div class="card-header"><span class="section-num">03</span><h3>Siniestro y Circunstancias</h3></div>
+            <div class="card-body">
+                <div class="form-grid">
+
+                    <div class="form-group">
+                        <div class="label-row"><label>Fecha del accidente</label></div>
+                        <input type="date" name="fecha_accidente" id="fechaAccidente"
+                               value="{{ form_data.fecha_accidente if form_data else '' }}"
+                               oninput="updateFechaInfo()" required>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="label-row"><label>Fecha del reclamo</label></div>
+                        <input type="date" name="fecha_reclamo" id="fechaReclamo"
+                               value="{{ form_data.fecha_reclamo if form_data else '' }}"
+                               oninput="updateFechaInfo()" required>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="label-row"><label>Info temporal (calculada)</label></div>
+                        <div class="computed-preview" style="margin-top:8px">
+                            <div class="computed-chip">Sem. accidente: <span id="semAcc">—</span></div>
+                            <div class="computed-chip">Sem. reclamo: <span id="semRec">—</span></div>
+                            <div class="computed-chip">Diferencia: <span id="semDiff">—</span> sem.</div>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="semana_accidente" id="hiddenSemAcc">
+                    <input type="hidden" name="semana_reclamo"   id="hiddenSemRec">
+
+                    <div class="form-group">
+                        <div class="label-row"><label>Semanas de retraso en reporte</label></div>
+                        <input type="number" name="semanas_retraso_reporte" min="0"
+                               value="{{ form_data.semanas_retraso_reporte if form_data else 0 }}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="label-row"><label>Días entre compra de póliza y accidente</label></div>
+                        <div class="calc-group">
+                            <input type="number" name="dias_poliza_accidente_min" id="diasPoliza" min="0"
+                                   value="{{ form_data.dias_poliza_accidente_min if form_data else 31 }}"
+                                   oninput="updateDiasBadge(this.value)" required>
+                            <span class="calc-badge" id="diasBadge"></span>
+                        </div>
+                        <div class="computed-preview">
+                            <div class="computed-chip">Rango: <span id="diasTexto">—</span></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="label-row"><label>N.° de reclamos pasados</label></div>
+                        <div class="calc-group">
+                            <input type="number" name="reclamos_pasados_min" id="reclamos" min="0"
+                                   value="{{ form_data.reclamos_pasados_min if form_data else 0 }}"
+                                   oninput="updateReclamosBadge(this.value)" required>
+                            <span class="calc-badge" id="reclamosBadge"></span>
+                        </div>
+                        <div class="computed-preview">
+                            <div class="computed-chip">Rango: <span id="reclamosTexto">—</span></div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="form-grid" style="margin-top:1rem">
+
+                    <div class="form-group">
+                        <div class="label-row"><label>Zona del accidente</label></div>
+                        <select name="zona_accidente_ml">
+                            <option value="1">Urbana</option>
+                            <option value="0">Rural</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="label-row"><label>¿Reporte policial?</label></div>
+                        <select name="reporte_policial_ml">
+                            <option value="1">Sí</option>
+                            <option value="0">No</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="label-row"><label>¿Testigo presente?</label></div>
+                        <select name="testigo_presente_ml">
+                            <option value="1">Sí</option>
+                            <option value="0">No</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="label-row"><label>Culpabilidad</label></div>
+                        <select name="culpabilidad">
+                            <option value="Titular de Póliza">Titular de Póliza</option>
+                            <option value="Tercero">Tercero</option>
+                        </select>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ 04: Historial ══ -->
+        <div class="card">
+            <div class="card-header"><span class="section-num">04</span><h3>Historial del Titular</h3></div>
+            <div class="card-body">
+                <div class="form-grid">
+                    <div class="form-group" style="grid-column:span 2">
+                        <div class="label-row">
+                            <label>Cambio de domicilio reciente</label>
+                            <span class="tip" data-tip="⚠️ Variable más predictiva del modelo. Cambios en los últimos 6 meses tienen 75% de tasa de fraude histórica en el dataset vs 5.7% para sin cambios.">?</span>
+                        </div>
+                        <select name="cambio_direccion">
+                            <option value="no change">Sin cambios de domicilio</option>
+                            <option value="4 to 8 years">Hace 4–8 años</option>
+                            <option value="1 year">Hace 1 año</option>
+                            <option value="2 to 3 years">Hace 2–3 años</option>
+                            <option value="under 6 months">⚠️  Menos de 6 meses (alto riesgo)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-analyze" onclick="return prepareAndSubmit()">
+            ▶ ANALIZAR CON INTELIGENCIA ARTIFICIAL
+        </button>
+
+    </form>
+</div>
+
+<script>
+    // Rango precio
+    function rangoPrecion(v) {
+        v = Number(v);
+        if (v < 20000)  return '< $20,000';
+        if (v < 30000)  return '$20k – $29k';
+        if (v < 40000)  return '$30k – $39k';
+        if (v < 60000)  return '$40k – $59k';
+        if (v < 70000)  return '$60k – $69k';
+        return '> $69,000';
+    }
+    function updateRangoBadge(v) {
+        const r = rangoPrecion(v);
+        document.getElementById('rangoBadge').textContent = r;
+        document.getElementById('rangoTexto').textContent = r;
+    }
+
+    // Rango días
+    function rangoDias(d) {
+        d = Number(d);
+        if (d === 0)  return 'Ninguno';
+        if (d <= 7)   return '1 – 7 días ⚠';
+        if (d <= 15)  return '8 – 15 días';
+        if (d <= 30)  return '15 – 30 días';
+        return 'Más de 30 días';
+    }
+    function updateDiasBadge(v) {
+        const r = rangoDias(v);
+        document.getElementById('diasBadge').textContent = r;
+        document.getElementById('diasTexto').textContent = r;
+    }
+
+    // Rango reclamos
+    function rangoReclamos(n) {
+        n = Number(n);
+        if (n === 0) return 'Ninguno';
+        if (n === 1) return '1';
+        if (n <= 4)  return '2 – 4';
+        return 'Más de 4';
+    }
+    function updateReclamosBadge(v) {
+        const r = rangoReclamos(v);
+        document.getElementById('reclamosBadge').textContent = r;
+        document.getElementById('reclamosTexto').textContent = r;
+    }
+
+    // Semanas desde fechas
+    function semanaDeAnio(fechaStr) {
+        if (!fechaStr) return null;
+        const d = new Date(fechaStr + 'T00:00:00');
+        const start = new Date(d.getFullYear(), 0, 1);
+        return Math.ceil(((d - start) / 86400000 + start.getDay() + 1) / 7);
+    }
+    function updateFechaInfo() {
+        const fa = document.getElementById('fechaAccidente').value;
+        const fr = document.getElementById('fechaReclamo').value;
+        const sa = semanaDeAnio(fa), sr = semanaDeAnio(fr);
+        document.getElementById('semAcc').textContent  = sa ?? '—';
+        document.getElementById('semRec').textContent  = sr ?? '—';
+        document.getElementById('semDiff').textContent = (sa && sr) ? (sr - sa) : '—';
+        if (sa) document.getElementById('hiddenSemAcc').value = sa;
+        if (sr) document.getElementById('hiddenSemRec').value = sr;
+    }
+
+    // Calificación conductor
+    const calInput = document.getElementById('calInput');
+    function setActive(val) {
+        document.querySelectorAll('.star-btn').forEach(b => b.classList.toggle('active', Number(b.dataset.val) === Number(val)));
+        calInput.value = val;
+    }
+    document.querySelectorAll('.star-btn').forEach(b => b.addEventListener('click', () => setActive(b.dataset.val)));
+    setActive(calInput.value || 2);
+
+    // Submit
+    function prepareAndSubmit() {
+        const fa = document.getElementById('fechaAccidente').value;
+        const fr = document.getElementById('fechaReclamo').value;
+        if (!fa || !fr) { alert('Por favor ingresa las fechas del accidente y del reclamo.'); return false; }
+        updateFechaInfo();
+        document.getElementById('loadingOverlay').classList.add('active');
+        return true;
+    }
+
+    // Init
+    window.addEventListener('DOMContentLoaded', () => {
+        updateRangoBadge(document.getElementById('valorVehiculo').value);
+        updateDiasBadge(document.getElementById('diasPoliza').value);
+        updateReclamosBadge(document.getElementById('reclamos').value);
+        updateFechaInfo();
+        const panel = document.getElementById('resultPanel');
+        if (panel) setTimeout(() => panel.scrollIntoView({ behavior:'smooth', block:'start' }), 100);
+    });
+</script>
+</body>
+</html>
