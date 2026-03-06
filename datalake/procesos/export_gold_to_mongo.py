@@ -56,11 +56,11 @@ def main():
 
     try:
         # 1. Subir tabla principal
-        ruta_enriquecido = "file:/home/hadoop/topicos-deteccion-fraudes/reports/temp/fraudes_enriquecido.csv"
+        ruta_enriquecido = "file:/home/hadoop/topicos-deteccion-fraudes/reports/fraudes_enriquecido.csv"
         cargar_a_mongo(spark, ruta_enriquecido, mongo_uri, database_name, "fraudes_detalle")
 
         # 2. Subir tabla de KPIs
-        ruta_metricas = "file:/home/hadoop/topicos-deteccion-fraudes/reports/temp/metricas_fraude.csv"
+        ruta_metricas = "file:/home/hadoop/topicos-deteccion-fraudes/reports/metricas_fraude.csv"
         cargar_a_mongo(spark, ruta_metricas, mongo_uri, database_name, "metricas_kpi")
 
     except Exception as e:
