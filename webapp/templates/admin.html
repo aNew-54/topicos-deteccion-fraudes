@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SeguroIA — Panel MLOps</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg:       #080c10;
+            --surface:  #0d1318;
+            --surface2: #111920;
+            --border:   #1c2a35;
+            --accent:   #00d4ff;
+            --danger:   #ff3b5c;
+            --safe:     #00e5a0;
+            --warn:     #ffaa00;
+            --text:     #c8dae6;
+            --muted:    #4a6175;
+            --mono:     'Space Mono', monospace;
+            --sans:     'Syne', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--sans);
+            min-height: 100vh;
+        }
+
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(0,212,255,0.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,212,255,0.025) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+        }
+
+        /* ── Navbar ── */
+        nav {
+            position: sticky; top: 0; z-index: 100;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 2rem; height: 58px;
+            background: rgba(8,12,16,0.92);
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(12px);
+        }
+
+        .nav-brand {
+            display: flex; align-items: center; gap: 10px;
+            font-family: var(--sans); font-weight: 800; font-size: 1.05rem;
+            letter-spacing: -0.02em; color: #fff;
+        }
+
+        .nav-dot {
+            width: 8px; height: 8px;
+            background: var(--warn); border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%,100% { opacity:1; transform:scale(1); }
+            50% { opacity:0.4; transform:scale(0.8); }
+        }
+
+        .nav-actions { display: flex; gap: 0.75rem; align-items: center; }
+
+        .btn { 
+            font-family: var(--mono); font-size: 0.73rem; letter-spacing: 0.06em;
+            padding: 7px 16px; border-radius: 3px; cursor: pointer;
+            text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+            transition: all 0.2s; border: none;
+        }
+
+        .btn-outline {
+            background: transparent; border: 1px solid var(--border); color: var(--muted);
+        }
+        .btn-outline:hover { border-color: var(--accent); color: var(--accent); background: rgba(0,212,255,0.05); }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #0095b3, #00d4ff);
+            color: #001a22; font-weight: 700;
+        }
+        .btn-primary:hover { box-shadow: 0 4px 20px rgba(0,212,255,0.3); transform: translateY(-1px); }
+
+        .btn-warn {
+            background: rgba(255,170,0,0.12); border: 1px solid rgba(255,170,0,0.35);
+            color: var(--warn);
+        }
+        .btn-warn:hover { background: rgba(255,170,0,0.2); }
+
+        /* ── Layout ── */
+        .container {
+            position: relative; z-index: 1;
+            max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem;
+        }
+
+        .page-title {
+            display: flex; align-items: center; gap: 12px;
+            margin-bottom: 2rem;
+        }
+
+        .page-title h2 {
+            font-size: 1.4rem; font-weight: 800;
+            letter-spacing: -0.02em; color: #fff;
+        }
+
+        .page-title .badge {
+            font-family: var(--mono); font-size: 0.65rem;
+            background: rgba(255,170,0,0.1); border: 1px solid rgba(255,170,0,0.3);
+            color: var(--warn); padding: 3px 10px; border-radius: 2px;
+            letter-spacing: 0.1em;
+        }
+
+        /* ── Stats grid ── */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 1.2rem 1.4rem;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+
+        .stat-card:hover { border-color: rgba(0,212,255,0.2); }
+
+        .stat-card::before {
+            content: '';
+            position: absolute; top:0; left:0;
+            width: 3px; height: 100%;
+        }
+
+        .stat-card.blue::before   { background: var(--accent); }
+        .stat-card.red::before    { background: var(--danger); }
+        .stat-card.green::before  { background: var(--safe); }
+        .stat-card.warn::before   { background: var(--warn); }
+
+        .stat-label {
+            font-family: var(--mono); font-size: 0.62rem;
+            color: var(--muted); letter-spacing: 0.12em;
+            text-transform: uppercase; margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-family: var(--mono); font-size: 1.9rem;
+            font-weight: 700; line-height: 1; color: #fff;
+        }
+
+        .stat-card.red .stat-value   { color: var(--danger); }
+        .stat-card.green .stat-value { color: var(--safe); }
+        .stat-card.warn .stat-value  { color: var(--warn); }
+        .stat-card.blue .stat-value  { color: var(--accent); }
+
+        .stat-sub {
+            font-family: var(--mono); font-size: 0.65rem;
+            color: var(--muted); margin-top: 4px;
+        }
+
+        /* ── Two-column layout ── */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+        /* ── Model info card ── */
+        .info-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 5px; overflow: hidden;
+        }
+
+        .info-header {
+            padding: 0.9rem 1.2rem;
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+
+        .info-header h4 {
+            font-size: 0.8rem; font-weight: 600;
+            letter-spacing: 0.06em; text-transform: uppercase;
+        }
+
+        .status-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--safe); box-shadow: 0 0 6px var(--safe);
+        }
+
+        .metric-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.7rem 1.2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .metric-row:last-child { border-bottom: none; }
+
+        .metric-key {
+            font-family: var(--mono); font-size: 0.68rem; color: var(--muted);
+        }
+
+        .metric-val {
+            font-family: var(--mono); font-size: 0.8rem; color: #fff; font-weight: 700;
+        }
+
+        .metric-val.good { color: var(--safe); }
+        .metric-val.accent { color: var(--accent); }
+
+        /* ── Retraining card ── */
+        .retrain-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 5px; padding: 1.4rem;
+            display: flex; flex-direction: column; gap: 1rem;
+        }
+
+        .retrain-card h4 {
+            font-size: 0.8rem; font-weight: 600;
+            letter-spacing: 0.05em; text-transform: uppercase;
+            color: var(--text);
+        }
+
+        .retrain-card p {
+            font-family: var(--mono); font-size: 0.7rem;
+            color: var(--muted); line-height: 1.6;
+        }
+
+        .retrain-card .btn-warn { width: 100%; justify-content: center; }
+
+        /* ── Table ── */
+        .table-wrap {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 5px; overflow: hidden;
+        }
+
+        .table-header {
+            padding: 0.9rem 1.4rem;
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+
+        .table-header h4 {
+            font-size: 0.8rem; font-weight: 600;
+            letter-spacing: 0.05em; text-transform: uppercase;
+        }
+
+        .table-header .count-badge {
+            font-family: var(--mono); font-size: 0.65rem;
+            background: rgba(255,170,0,0.1); border: 1px solid rgba(255,170,0,0.3);
+            color: var(--warn); padding: 2px 9px; border-radius: 2px;
+        }
+
+        table { width: 100%; border-collapse: collapse; }
+
+        thead tr {
+            background: rgba(0,0,0,0.3);
+        }
+
+        th {
+            font-family: var(--mono); font-size: 0.62rem;
+            color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase;
+            padding: 10px 1.4rem; text-align: left; font-weight: 400;
+            white-space: nowrap;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            transition: background 0.15s;
+        }
+
+        tbody tr:hover { background: rgba(0,212,255,0.03); }
+        tbody tr:last-child { border-bottom: none; }
+
+        td {
+            font-family: var(--mono); font-size: 0.75rem;
+            padding: 12px 1.4rem; color: var(--text);
+            white-space: nowrap;
+        }
+
+        .empty-row td {
+            text-align: center; color: var(--muted); padding: 2rem;
+            font-size: 0.75rem;
+        }
+
+        /* ── Prediction badge ── */
+        .pred-badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            font-size: 0.68rem; padding: 3px 10px; border-radius: 3px;
+            font-weight: 700; letter-spacing: 0.06em;
+        }
+
+        .pred-fraud  { background:rgba(255,59,92,0.1);  border:1px solid rgba(255,59,92,0.3);  color:var(--danger); }
+        .pred-legit  { background:rgba(0,229,160,0.08); border:1px solid rgba(0,229,160,0.3);  color:var(--safe); }
+
+        /* ── Probability bar in table ── */
+        .prob-cell { display: flex; align-items: center; gap: 8px; }
+        .prob-mini-bar { width: 60px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+        .prob-mini-fill { height: 100%; border-radius: 2px; }
+        .prob-high .prob-mini-fill { background: var(--danger); }
+        .prob-low  .prob-mini-fill { background: var(--safe); }
+
+        /* ── Action buttons ── */
+        .action-btns { display: flex; gap: 6px; }
+
+        .btn-validate {
+            font-family: var(--mono); font-size: 0.65rem;
+            padding: 4px 10px; border-radius: 2px; cursor: pointer;
+            text-decoration: none; border: none; letter-spacing: 0.05em;
+            transition: all 0.15s;
+        }
+
+        .btn-fraud-yes { background:rgba(255,59,92,0.1); border:1px solid rgba(255,59,92,0.3); color:var(--danger); }
+        .btn-fraud-yes:hover { background:rgba(255,59,92,0.2); }
+        .btn-fraud-no  { background:rgba(0,229,160,0.08); border:1px solid rgba(0,229,160,0.3); color:var(--safe); }
+        .btn-fraud-no:hover  { background:rgba(0,229,160,0.18); }
+
+        /* ── Flash messages ── */
+        .flash {
+            font-family: var(--mono); font-size: 0.78rem;
+            padding: 12px 16px; border-radius: 4px; margin-bottom: 1rem;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .flash-success { background:rgba(0,229,160,0.08); border:1px solid rgba(0,229,160,0.3); color:var(--safe); }
+        .flash-danger  { background:rgba(255,59,92,0.08); border:1px solid rgba(255,59,92,0.3); color:var(--danger); }
+
+        /* ── Confirm retrain dialog ── */
+        .confirm-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(8,12,16,0.88); z-index: 999;
+            align-items: center; justify-content: center;
+            backdrop-filter: blur(6px);
+        }
+        .confirm-overlay.active { display: flex; }
+
+        .confirm-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px; padding: 2rem;
+            max-width: 400px; width: 90%;
+            animation: popIn 0.25s ease;
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0.94); opacity: 0; }
+            to   { transform: scale(1); opacity: 1; }
+        }
+
+        .confirm-box h3 {
+            font-size: 1.1rem; font-weight: 800; margin-bottom: 0.75rem; color: #fff;
+        }
+
+        .confirm-box p {
+            font-family: var(--mono); font-size: 0.72rem;
+            color: var(--muted); line-height: 1.6; margin-bottom: 1.5rem;
+        }
+
+        .confirm-actions { display: flex; gap: 0.75rem; }
+
+        .loading-bar {
+            display: none; position: fixed; top: 0; left: 0;
+            height: 2px; background: var(--accent); z-index: 9999;
+            animation: progress 3s ease-in-out;
+        }
+        .loading-bar.active { display: block; }
+
+        @keyframes progress { from { width: 0; } to { width: 100%; } }
+    </style>
+</head>
+<body>
+
+<div class="loading-bar" id="loadingBar"></div>
+
+<!-- Confirm dialog -->
+<div class="confirm-overlay" id="confirmOverlay">
+    <div class="confirm-box">
+        <h3>↻ Reentrenar Modelo v2</h3>
+        <p>
+            Se entrenará el modelo con el dataset histórico + feedback de MongoDB.<br><br>
+            Este proceso puede tardar varios minutos. El modelo actual seguirá activo hasta que el nuevo esté listo.
+        </p>
+        <div class="confirm-actions">
+            <form action="/reentrenar" method="POST" style="flex:1">
+                <button type="submit" class="btn btn-warn" style="width:100%" onclick="startLoading()">
+                    ↻ CONFIRMAR REENTRENAMIENTO
+                </button>
+            </form>
+            <button class="btn btn-outline" onclick="closeConfirm()" style="flex:1">CANCELAR</button>
+        </div>
+    </div>
+</div>
+
+<!-- Navbar -->
+<nav>
+    <div class="nav-brand">
+        <span class="nav-dot"></span>
+        MLOPS <span style="color:var(--accent);margin-left:4px">ADMIN</span>
+        <span style="font-family:var(--mono);font-size:0.6rem;color:var(--muted);margin-left:6px">v2.0</span>
+    </div>
+    <div class="nav-actions">
+        <a href="/" class="btn btn-outline">← PREDICTOR</a>
+        <button class="btn btn-warn" onclick="showConfirm()">↻ REENTRENAR MODELO</button>
+    </div>
+</nav>
+
+<div class="container">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for cat, msg in messages %}
+          <div class="flash flash-{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="page-title">
+        <h2>Centro de Operaciones</h2>
+        {% if stats.pendientes > 0 %}
+        <span class="badge">{{ stats.pendientes }} PENDIENTES</span>
+        {% endif %}
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card blue">
+            <div class="stat-label">Total evaluados</div>
+            <div class="stat-value">{{ stats.total }}</div>
+            <div class="stat-sub">casos en base de datos</div>
+        </div>
+        <div class="stat-card red">
+            <div class="stat-label">Fraudes detectados</div>
+            <div class="stat-value">{{ stats.fraudes }}</div>
+            <div class="stat-sub">{{ stats.tasa_fraude }}% del total</div>
+        </div>
+        <div class="stat-card warn">
+            <div class="stat-label">Pendientes revisión</div>
+            <div class="stat-value">{{ stats.pendientes }}</div>
+            <div class="stat-sub">sin validar por humano</div>
+        </div>
+        <div class="stat-card green">
+            <div class="stat-label">Casos validados</div>
+            <div class="stat-value">{{ stats.validados }}</div>
+            <div class="stat-sub">listos para reentrenamiento</div>
+        </div>
+    </div>
+
+    <!-- Two column: table + model info -->
+    <div class="two-col">
+
+        <!-- Table -->
+        <div class="table-wrap">
+            <div class="table-header">
+                <h4>Cola de Revisión Humana</h4>
+                <span class="count-badge">{{ casos|length }} CASOS</span>
+            </div>
+            <div style="overflow-x:auto">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Probabilidad</th>
+                            <th>Predicción IA</th>
+                            <th>Nivel</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in casos %}
+                        <tr>
+                            <td>{{ c.fecha_evaluacion.strftime('%m/%d %H:%M') }}</td>
+                            <td>
+                                <div class="prob-cell {% if c.ml_probabilidad_fraude > 50 %}prob-high{% else %}prob-low{% endif %}">
+                                    <span>{{ "%.1f"|format(c.ml_probabilidad_fraude) }}%</span>
+                                    <div class="prob-mini-bar">
+                                        <div class="prob-mini-fill" style="width:{{ c.ml_probabilidad_fraude }}%"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if c.ml_prediccion == 1 %}
+                                <span class="pred-badge pred-fraud">● FRAUDE</span>
+                                {% else %}
+                                <span class="pred-badge pred-legit">● LEGÍTIMO</span>
+                                {% endif %}
+                            </td>
+                            <td style="color:var(--muted);font-size:0.68rem">
+                                {{ c.nivel_alerta if c.nivel_alerta else '—' }}
+                            </td>
+                            <td>
+                                <div class="action-btns">
+                                    <a href="/feedback/{{ c._id }}/1" class="btn-validate btn-fraud-yes">ERA FRAUDE</a>
+                                    <a href="/feedback/{{ c._id }}/0" class="btn-validate btn-fraud-no">LEGÍTIMO</a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr class="empty-row">
+                            <td colspan="5">✓ Sin casos pendientes de revisión</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Right column -->
+        <div style="display:flex;flex-direction:column;gap:1rem">
+
+            <!-- Model metrics -->
+            <div class="info-card">
+                <div class="info-header">
+                    <h4>Estado del Modelo</h4>
+                    <span class="status-dot"></span>
+                </div>
+                {% if metricas %}
+                <div class="metric-row">
+                    <span class="metric-key">VERSIÓN</span>
+                    <span class="metric-val accent">v2.0 Pipeline</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-key">AUC-ROC</span>
+                    <span class="metric-val good">{{ metricas.auc_roc }}%</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-key">F1-SCORE</span>
+                    <span class="metric-val good">{{ metricas.f1_score }}%</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-key">UMBRAL</span>
+                    <span class="metric-val">{{ metricas.umbral }}</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-key">ALGORITMO</span>
+                    <span class="metric-val" style="font-size:0.65rem">GB + RF Ensemble</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-key">ENTRENADO</span>
+                    <span class="metric-val" style="font-size:0.65rem;color:var(--muted)">
+                        {{ metricas.fecha[:10] if metricas.fecha != 'N/A' else 'N/A' }}
+                    </span>
+                </div>
+                {% else %}
+                <div class="metric-row">
+                    <span class="metric-key">ESTADO</span>
+                    <span class="metric-val" style="color:var(--danger)">NO CARGADO</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Retrain card -->
+            <div class="retrain-card">
+                <h4>↻ Reentrenamiento</h4>
+                <p>
+                    Combina el dataset histórico con el feedback validado de MongoDB para mejorar el modelo con datos reales de producción.
+                </p>
+                <p style="color:rgba(74,97,117,0.8)">
+                    Casos validados disponibles: <strong style="color:var(--safe)">{{ stats.validados }}</strong>
+                </p>
+                <button class="btn btn-warn" onclick="showConfirm()">
+                    ↻ INICIAR REENTRENAMIENTO
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<script>
+function showConfirm()  { document.getElementById('confirmOverlay').classList.add('active'); }
+function closeConfirm() { document.getElementById('confirmOverlay').classList.remove('active'); }
+function startLoading() { document.getElementById('loadingBar').classList.add('active'); }
+
+document.getElementById('confirmOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeConfirm();
+});
+</script>
+
+</body>
+</html>
