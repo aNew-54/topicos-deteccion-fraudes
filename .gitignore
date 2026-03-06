@@ -1,1 +1,61 @@
 .env
+
+# ==========================================
+# 1. ENTORNOS VIRTUALES DE PYTHON
+# ==========================================
+# (Nunca subas las librerías instaladas, para eso usamos requirements.txt)
+venv/
+venv_ml/
+env/
+.env/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ==========================================
+# 2. DATOS Y CARPETAS TEMPORALES (¡CRÍTICO!)
+# ==========================================
+# (Ignoramos todos los archivos de datos crudos y procesados)
+*.parquet
+*.avro
+*.json
+datalake/temp_*/
+reports/temp/
+
+# ==========================================
+# 3. SPARK Y HADOOP (Archivos residuales)
+# ==========================================
+# (Spark crea muchos archivos basura y bases de datos locales temporales)
+spark-warehouse/
+metastore_db/
+derby.log
+*.crc
+_SUCCESS
+.spark-staging/
+
+# ==========================================
+# 4. MACHINE LEARNING (Modelos pesados)
+# ==========================================
+# (Los modelos compilados no se suben, se regeneran entrenándolos)
+*.pkl
+*.joblib
+webapp/modelo_fraudes.pkl
+
+# ==========================================
+# 5. AIRFLOW (Logs y BD local)
+# ==========================================
+airflow/airflow.cfg
+airflow/airflow.db
+airflow/logs/
+airflow/webserver_config.py
+airflow/airflow-webserver.pid
+
+# ==========================================
+# 6. ARCHIVOS DE SISTEMA OPERATIVO E IDEs
+# ==========================================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+.ipynb_checkpoints/
